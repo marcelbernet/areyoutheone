@@ -326,7 +326,8 @@ function normalizeName(name) {
     .normalize('NFKC')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    .toLowerCase();
 }
 
 function makePairKey(a, b) {
@@ -347,16 +348,28 @@ function isCorrectPair(a, b) {
 }
 
 function generateGroups(pairs, numGroups) {
+  // Deterministic RNG seed so the same inputs yield the same grouping
   const seed = computeSeed(pairs, numGroups);
   const rnd = mulberry32(seed);
-  const shuffled = seededShuffle(pairs, rnd);
+
+  const totalPairs = pairs.length;
+  const perGroup = Math.max(1, Math.ceil(totalPairs / Math.max(1, numGroups)));
+
   const groups = Array.from({ length: numGroups }, () => ({ pairs: [], people: [] }));
-  shuffled.forEach((pair, i) => {
-    const g = i % numGroups;
-    groups[g].pairs.push(pair);
-    groups[g].people.push(pair[0], pair[1]);
-  });
-  groups.forEach((g) => { g.people = seededShuffle(g.people, rnd); });
+
+  // Sample with replacement: allow the same pair and same person to appear multiple times across groups
+  for (let g = 0; g < numGroups; g += 1) {
+    for (let k = 0; k < perGroup; k += 1) {
+      const idx = Math.floor(rnd() * totalPairs);
+      const pair = pairs[idx];
+      groups[g].pairs.push(pair);
+      // Push people directly; do not enforce uniqueness
+      groups[g].people.push(pair[0], pair[1]);
+    }
+    // Optional: shuffle visual order of people but retain duplicates
+    groups[g].people = seededShuffle(groups[g].people, rnd);
+  }
+
   return groups;
 }
 
@@ -535,12 +548,14 @@ function populateGroupSelect() {
 
 function renderFullGuessForAllGroups() {
   const container = document.getElementById('full-guess-groups');
-  if (!container || container.children.length > 0) return;
+  if (!container) return;
   container.innerHTML = '';
   const nGroups = parseInt(document.getElementById('numGroups').value, 10) || 1;
-  const groups = latestGroups;
+  const groups = latestGroups || [];
+  try { if (!latestGroups || !latestGroups.length) console.warn('[AYTO] renderFullGuessForAllGroups: latestGroups is empty'); } catch (e) {}
   groups.forEach((g, gi) => {
-    const people = [...g.people];
+    // Deduplicate and sort people list for this group's dropdowns
+    const people = Array.from(new Set(g.people)).sort((a, b) => a.localeCompare(b));
     const div = document.createElement('div');
     div.className = 'full-guess-group';
     const title = document.createElement('h4');
@@ -548,9 +563,10 @@ function renderFullGuessForAllGroups() {
     div.appendChild(title);
     const area = document.createElement('div');
     area.className = 'full-guess-area';
-    const numRows = Math.floor(people.length / 2);
+    const numRows = g.pairs.length;
     for (let r = 0; r < numRows; r += 1) {
       const label = document.createElement('label');
+      label.id = `group-${gi}-row-${r}-label`;
       label.textContent = `Pair ${r + 1}:`;
 
       const selA = document.createElement('select');
@@ -587,6 +603,10 @@ function renderFullGuessForAllGroups() {
     const resultP = document.createElement('p');
     resultP.id = `group-guess-result-${gi}`;
     resultP.className = 'result';
+    // Store the actual correct pairs for this group in a data attribute
+    const correctGroupPairs = g.pairs.map(p => makePairKey(p[0], p[1])).sort().join(',');
+    div.setAttribute('data-correct-pairs', correctGroupPairs);
+
     btn.addEventListener('click', () => {
       const { correct, total } = evaluateGroupGuesses(gi);
       resultP.textContent = `You found ${correct} out of ${total} perfect matches in Group ${gi + 1}!`;
@@ -603,6 +623,8 @@ function evaluateGroupGuesses(groupIndex) {
   const groupDivs = Array.from(container.querySelectorAll('.full-guess-group'));
   const div = groupDivs[groupIndex];
   if (!div) return { correct: 0, total: 0 };
+
+  // Collect user's pair rows (duplicates allowed) and evaluate each row
   const rows = new Map();
   Array.from(div.querySelectorAll('select')).forEach((sel) => {
     const row = parseInt(sel.getAttribute('data-row') || '0', 10);
@@ -612,14 +634,22 @@ function evaluateGroupGuesses(groupIndex) {
     if (role === 'a') rec.a = sel.value;
     if (role === 'b') rec.b = sel.value;
   });
+
   let correct = 0;
   let total = 0;
-  rows.forEach((rec) => {
+  rows.forEach((rec, r) => {
     if (!rec.a || !rec.b) return;
     total += 1;
+    const key = makePairKey(rec.a, rec.b);
     const ok = isCorrectPair(rec.a, rec.b);
-    if (ok) correct += 1;
+    try { console.debug('[AYTO][GroupEval]', { groupIndex, row: r, a: rec.a, b: rec.b, key, ok }); } catch (e) {}
+    const labelEl = document.getElementById(`group-${groupIndex}-row-${r}-label`);
+    if (labelEl) {
+      labelEl.textContent = `Pair ${r + 1}: ${ok ? '✅' : '❌'}`;
+    }
+    if (ok) correct += 1; // same logic as single-pair check
   });
+
   return { correct, total };
 }
 
@@ -745,17 +775,22 @@ document.getElementById('checkSinglePairButton').addEventListener('click', () =>
 });
 
 document.getElementById('checkFullGuessButton').addEventListener('click', () => {
-  const userGuesses = collectFullGuesses();
-  let correctCount = 0;
-  userGuesses.forEach((userPair) => {
-    const isCorrect = isCorrectPair(userPair[0], userPair[1]);
-    if (!isCorrect) {
-      try { console.debug('[AYTO] Not a match:', userPair[0], userPair[1], 'vs any of', correctPairs); } catch (e) {}
-    }
-    if (isCorrect) correctCount += 1;
-  });
-  const totalPairs = correctPairs.length;
-  document.getElementById('full-guess-result').textContent = `You found ${correctCount} out of ${totalPairs} perfect matches!`;
+  const nGroups = parseInt(document.getElementById('numGroups').value, 10) || 1;
+  let totalCorrect = 0;
+  let totalPossible = 0;
+
+  for (let i = 0; i < nGroups; i++) {
+    const groupResult = evaluateGroupGuesses(i);
+    totalCorrect += groupResult.correct;
+    totalPossible += groupResult.total;
+  }
+
+  const resultElement = document.getElementById('full-guess-result');
+  if (totalPossible > 0) {
+    resultElement.textContent = `You found ${totalCorrect} out of ${totalPossible} perfect matches across all groups!`;
+  } else {
+    resultElement.textContent = 'Make your guesses in the groups above first!';
+  }
 });
 
 document.getElementById('revealButton').addEventListener('click', () => {
