@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Are You The One? Pair Finder</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%2322c55e'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            Are You The One? Pair Finder
+        </h1>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="card">
+                <details>
+                    <summary><h2 style="display:inline">How to Design Your Google Form</h2></summary>
+                <ol>
+                    <li><strong>First question</strong>: <code>Name and surname</code> (Short answer).</li>
+                    <li><strong>Second question</strong>: Attendance, e.g. <code>Are you coming... (Short answer / Multiple choice)</code>. Use values like <code>1. Yes, of course</code> for the attending option.</li>
+                    <li><strong>All other questions</strong>: Append a type letter in parentheses at the end of the question text: <code>(A)</code>, <code>(B)</code>, or <code>(C)</code>.
+                        <ul>
+                            <li><strong>(A)</strong>: Exact match scores 1, otherwise 0.</li>
+                            <li><strong>(B)</strong>: Proximity scoring. Answers should start with a number (e.g., <code>3. ...</code>). The closer the numbers, the higher the score.</li>
+                            <li><strong>(C)</strong>: Complementary: identical answers score 0; different answers score 1.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Answers format</strong>: Start each answer with a number (e.g., <code>1. ...</code>, <code>2. ...</code>, <code>3. ...</code>). The number is what the app parses.</li>
+                    <li><strong>Export</strong>: In Google Sheets, File → Download → CSV. Then upload that CSV here.</li>
+                </ol>
+                <p class="hint">Tip: Ensure every scored question ends with a type letter in parentheses, and every answer begins with a number.</p>
+                </details>
+            </div>
+        </section>
+        <!-- Setup Section -->
+        <section id="setup-section" class="section">
+            <div class="card">
+                <h2>1. Upload Data</h2>
+                <input type="file" id="csvFileInput" accept=".csv">
+                <p class="hint">Upload the Google Forms CSV export. Ensure it includes a column named <code>Name and surname</code>.</p>
+            </div>
+
+            <div class="card">
+                <h2>2. Configuration</h2>
+                <label for="filterColumnSelect">Filter Column (e.g. 'Are you coming?'):</label>
+                <select id="filterColumnSelect"></select>
+
+                <label for="filterValueSelect">Value for Attending:</label>
+                <select id="filterValueSelect"></select>
+                <hr>
+                <label for="forceRemoveSelect">Force Remove (if total is odd):</label>
+                <select id="forceRemoveSelect"></select>
+                <hr>
+                <label for="numGroups">Number of Game Groups:</label>
+                <input type="number" id="numGroups" value="3" min="1">
+            </div>
+
+            <div class="card actions">
+                <h2>3. Start the Game!</h2>
+                <button id="runButton">Calculate & Start Game</button>
+            </div>
+        </section>
+
+        <!-- Game Section -->
+        <section id="game-section" class="section hidden">
+            <h2>Let the Guessing Begin!</h2>
+
+            <div class="card">
+                <h3>Guess a Pair</h3>
+                <div class="row">
+                    <select id="person1-select"></select>
+                    <span class="and">and</span>
+                    <select id="person2-select"></select>
+                    <button id="checkSinglePairButton">Check</button>
+                </div>
+                <p id="single-pair-result" class="result"></p>
+            </div>
+
+            <div class="card">
+                <h3>Guess All Pairs</h3>
+                <div id="full-guess-groups"></div>
+                <button id="checkFullGuessButton">Check My Guesses</button>
+                <p id="full-guess-result" class="result"></p>
+            </div>
+
+            <div class="card actions">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="revealButton">Reveal All Correct Pairs</button>
+                    <button id="backToSetupButton" type="button">Back to Setup</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="section hidden">
+            <h2>The Official Results</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Perfect Matches</h3>
+                    <div id="pairs-output"></div>
+                </div>
+                <div class="card">
+                    <h3>Randomized Groups</h3>
+                    <div id="groups-output"></div>
+                </div>
+                <div class="card">
+                    <h3>Individual Stats</h3>
+                    <div id="stats-output"></div>
+                </div>
+            </div>
+            <div class="card actions" style="margin-top:12px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="backToGameButton" type="button">Back to Game</button>
+                    <button id="backToSetupButton2" type="button">Back to Setup</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <!-- Local Hungarian adapter (linear sum assignment) -->
+    <script src="hungarian.js"></script>
+    
+    <!-- Admin Section (hidden until login) -->
+    <section id="admin-login-section" class="section">
+        <div class="card">
+            <h2>Admin</h2>
+            <div class="row">
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+                <button id="adminLoginButton">Login</button>
+            </div>
+            <p class="hint">Enter password to view raw answers and the compatibility matrix.</p>
+        </div>
+    </section>
+
+    <section id="admin-content" class="section hidden">
+        <div class="card">
+            <h3>Raw Answers (Participants)</h3>
+            <div id="answers-output"></div>
+        </div>
+        <div class="card">
+            <h3>Compatibility Matrix</h3>
+            <div id="matrix-output"></div>
+        </div>
+    </section>
+
+    <!-- App (load after all DOM elements are present) -->
+    <script src="app.js"></script>
+
+    <footer>
+        <p>Made for game night. No backend required.</p>
+    </footer>
+</body>
+</html>
+
+

@@ -1,0 +1,114 @@
+:root {
+  --bg: #fce4ec;
+  --card: #ffffff;
+  --text: #333333;
+  --muted: #757575;
+  --accent: #ff4081;
+  --danger: #f50057;
+  --border: #f8bbd0;
+  --cupid: #ff80ab;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Dancing Script', cursive;
+  background: var(--bg) url('https://www.transparenttextures.com/patterns/hearts.png');
+  color: var(--text);
+}
+
+header, footer {
+  text-align: center;
+  padding: 20px 12px;
+}
+
+header h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 2.5em;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+main { max-width: 1000px; margin: 0 auto; padding: 12px; }
+
+.section { margin: 16px 0 32px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.card h2, .card h3 { margin-top: 0; color: var(--cupid); }
+
+label { display: block; margin: 10px 0 6px; color: var(--muted); }
+input[type="text"], input[type="number"], input[type="password"], select {
+  width: 100%;
+  background: #fce4ec;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'Roboto', sans-serif;
+}
+
+input[type="file"] { margin-top: 8px; }
+
+button {
+  background: linear-gradient(135deg, var(--accent), var(--cupid));
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+button:hover { transform: scale(1.05); }
+
+.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.and { opacity: 0.7; font-size: 1.2em; color: var(--cupid); }
+
+.result { margin-top: 8px; min-height: 20px; font-weight: bold; }
+
+.result.success { color: var(--accent); }
+.result.error { color: var(--danger); }
+
+.full-guess-area { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.full-guess-group { margin-bottom: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.full-guess-group h4 { margin: 0 0 8px 0; color: var(--cupid); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+.pair-pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fce4ec; border: 1px solid var(--border); margin: 4px 6px 0 0; }
+
+.hint { color: var(--muted); font-size: 0.9em; }
+
+.hidden { display: none; }
+
+code { background: #fce4ec; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+thead th { position: sticky; top: 0; background: #f8bbd0; }
+
+@media (max-width: 600px) {
+  body { font-size: 14px; }
+  header h1 { font-size: 2em; }
+  .full-guess-area { grid-template-columns: 1fr; }
+  .row { flex-direction: column; align-items: stretch; }
+}
+
+
