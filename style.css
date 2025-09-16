@@ -121,6 +121,20 @@ thead th { position: sticky; top: 0; background: #ffe0ea; z-index: 1; }
 .guess-matrix th, .guess-matrix td { min-width: 42px; }
 .guess-matrix input[type="checkbox"] { transform: scale(1.15); }
 
+/* Sticky first column (row headers) for better mobile usability */
+.guess-matrix thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3; /* above row headers */
+  background: #ffe0ea;
+}
+.guess-matrix tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+}
+
 /* Guess matrix header rotation */
 .guess-matrix thead th.rotate {
   height: 120px;
