@@ -554,48 +554,55 @@ function renderFullGuessForAllGroups() {
   const groups = latestGroups || [];
   try { if (!latestGroups || !latestGroups.length) console.warn('[AYTO] renderFullGuessForAllGroups: latestGroups is empty'); } catch (e) {}
   groups.forEach((g, gi) => {
-    // Deduplicate and sort people list for this group's dropdowns
+    // Deduplicate and sort people list for this group's matrix
     const people = Array.from(new Set(g.people)).sort((a, b) => a.localeCompare(b));
     const div = document.createElement('div');
     div.className = 'full-guess-group';
     const title = document.createElement('h4');
     title.textContent = `Group ${gi + 1}`;
     div.appendChild(title);
-    const area = document.createElement('div');
-    area.className = 'full-guess-area';
-    const numRows = g.pairs.length;
-    for (let r = 0; r < numRows; r += 1) {
-      const label = document.createElement('label');
-      label.id = `group-${gi}-row-${r}-label`;
-      label.textContent = `Pair ${r + 1}:`;
 
-      const selA = document.createElement('select');
-      people.forEach((p) => {
-        const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p;
-        selA.appendChild(opt);
+    // Build an upper-triangular checkbox matrix
+    const table = document.createElement('table');
+    table.className = 'guess-matrix';
+    const thead = document.createElement('thead');
+    const hRow = document.createElement('tr');
+    hRow.appendChild(document.createElement('th'));
+    people.forEach((name) => {
+      const th = document.createElement('th');
+      th.textContent = name;
+      hRow.appendChild(th);
+    });
+    thead.appendChild(hRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    people.forEach((rowName, i) => {
+      const tr = document.createElement('tr');
+      const th = document.createElement('th');
+      th.textContent = rowName;
+      tr.appendChild(th);
+      people.forEach((colName, j) => {
+        const td = document.createElement('td');
+        if (i < j) {
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.className = 'guess-matrix-cell';
+          cb.id = `g${gi}-cell-${i}-${j}`;
+          cb.setAttribute('data-group', String(gi));
+          cb.setAttribute('data-i', String(i));
+          cb.setAttribute('data-j', String(j));
+          cb.addEventListener('change', () => updateMatrixHighlights(gi));
+          td.appendChild(cb);
+        } else {
+          td.className = 'disabled-cell';
+        }
+        tr.appendChild(td);
       });
-      selA.setAttribute('data-group', String(gi));
-      selA.setAttribute('data-row', String(r));
-      selA.setAttribute('data-role', 'a');
-
-      const selB = document.createElement('select');
-      people.forEach((p) => {
-        const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p;
-        selB.appendChild(opt);
-      });
-      selB.setAttribute('data-group', String(gi));
-      selB.setAttribute('data-row', String(r));
-      selB.setAttribute('data-role', 'b');
-
-      area.appendChild(label);
-      area.appendChild(selA);
-      area.appendChild(selB);
-    }
-    div.appendChild(area);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    div.appendChild(table);
 
     const btn = document.createElement('button');
     btn.id = `checkGroupGuessButton-${gi}`;
@@ -603,18 +610,89 @@ function renderFullGuessForAllGroups() {
     const resultP = document.createElement('p');
     resultP.id = `group-guess-result-${gi}`;
     resultP.className = 'result';
-    // Store the actual correct pairs for this group in a data attribute
-    const correctGroupPairs = g.pairs.map(p => makePairKey(p[0], p[1])).sort().join(',');
-    div.setAttribute('data-correct-pairs', correctGroupPairs);
 
     btn.addEventListener('click', () => {
-      const { correct, total } = evaluateGroupGuesses(gi);
-      resultP.textContent = `You found ${correct} out of ${total} perfect matches in Group ${gi + 1}!`;
+      const res = evaluateGroupGuesses(gi);
+      if (res.error) {
+        resultP.className = 'result error';
+        resultP.textContent = res.error;
+      } else {
+        resultP.className = 'result success';
+        resultP.textContent = `You found ${res.correct} out of ${res.total} perfect matches in Group ${gi + 1}!`;
+      }
     });
     div.appendChild(btn);
     div.appendChild(resultP);
 
     container.appendChild(div);
+    // Initialize highlights (clear any)
+    updateMatrixHighlights(gi);
+  });
+}
+
+function updateMatrixHighlights(groupIndex) {
+  const container = document.getElementById('full-guess-groups');
+  const groupDivs = Array.from(container.querySelectorAll('.full-guess-group'));
+  const div = groupDivs[groupIndex];
+  if (!div) return;
+  const table = div.querySelector('table.guess-matrix');
+  if (!table) return;
+
+  // Determine selected indices (treat pairs symmetrically)
+  const selected = Array.from(div.querySelectorAll('input.guess-matrix-cell:checked'));
+  const rowsSel = new Set();
+  const colsSel = new Set();
+  selected.forEach((cb) => {
+    const i = parseInt(cb.getAttribute('data-i') || '0', 10);
+    const j = parseInt(cb.getAttribute('data-j') || '0', 10);
+    rowsSel.add(i);
+    rowsSel.add(j);
+    colsSel.add(i);
+    colsSel.add(j);
+  });
+
+  // Clear all previous styles
+  table.querySelectorAll('td').forEach((el) => {
+    el.classList.remove('row-highlight');
+    el.classList.remove('col-highlight');
+  });
+  table.querySelectorAll('tbody th').forEach((el) => el.classList.remove('row-highlight'));
+  table.querySelectorAll('thead tr th').forEach((el, idx) => {
+    if (idx > 0) el.classList.remove('col-active');
+  });
+
+  // Apply: highlight only rows' cells and row headers
+  const bodyRows = table.querySelectorAll('tbody tr');
+  bodyRows.forEach((tr, i) => {
+    const rowHeader = tr.querySelector('th');
+    if (rowsSel.has(i)) rowHeader && rowHeader.classList.add('row-highlight');
+    const cells = tr.querySelectorAll('td');
+    cells.forEach((td, j) => {
+      if (rowsSel.has(i)) td.classList.add('row-highlight');
+      if (colsSel.has(j)) td.classList.add('col-highlight');
+    });
+  });
+
+  // Apply: make active column headers bold (no cell shading)
+  const headerCells = table.querySelectorAll('thead tr th');
+  headerCells.forEach((th, idx) => {
+    if (idx === 0) return; // corner
+    const j = idx - 1;
+    if (colsSel.has(j)) th.classList.add('col-active');
+  });
+
+  // Disable any unchecked checkboxes that involve already-used persons
+  const usedIdx = new Set([...rowsSel, ...colsSel]);
+  const allCbs = Array.from(div.querySelectorAll('input.guess-matrix-cell'));
+  allCbs.forEach((cb) => {
+    const i = parseInt(cb.getAttribute('data-i') || '0', 10);
+    const j = parseInt(cb.getAttribute('data-j') || '0', 10);
+    if (cb.checked) {
+      cb.disabled = false;
+      return;
+    }
+    const involvesUsed = usedIdx.has(i) || usedIdx.has(j);
+    cb.disabled = involvesUsed;
   });
 }
 
@@ -624,30 +702,48 @@ function evaluateGroupGuesses(groupIndex) {
   const div = groupDivs[groupIndex];
   if (!div) return { correct: 0, total: 0 };
 
-  // Collect user's pair rows (duplicates allowed) and evaluate each row
-  const rows = new Map();
-  Array.from(div.querySelectorAll('select')).forEach((sel) => {
-    const row = parseInt(sel.getAttribute('data-row') || '0', 10);
-    const role = sel.getAttribute('data-role');
-    if (!rows.has(row)) rows.set(row, { a: null, b: null });
-    const rec = rows.get(row);
-    if (role === 'a') rec.a = sel.value;
-    if (role === 'b') rec.b = sel.value;
-  });
-
+  // Collect checked matrix cells and evaluate each selection
+  const checkboxes = Array.from(div.querySelectorAll('input.guess-matrix-cell'));
   let correct = 0;
   let total = 0;
-  rows.forEach((rec, r) => {
-    if (!rec.a || !rec.b) return;
-    total += 1;
-    const key = makePairKey(rec.a, rec.b);
-    const ok = isCorrectPair(rec.a, rec.b);
-    try { console.debug('[AYTO][GroupEval]', { groupIndex, row: r, a: rec.a, b: rec.b, key, ok }); } catch (e) {}
-    const labelEl = document.getElementById(`group-${groupIndex}-row-${r}-label`);
-    if (labelEl) {
-      labelEl.textContent = `Pair ${r + 1}: ${ok ? '✅' : '❌'}`;
+  const people = Array.from(new Set((latestGroups[groupIndex]?.people || []))).sort((a, b) => a.localeCompare(b));
+
+  // Desired number of pairs for this group
+  const group = latestGroups[groupIndex] || { pairs: [] };
+  const requiredPairs = Math.min(group.pairs ? group.pairs.length : Math.floor(people.length / 2), Math.floor(people.length / 2));
+
+  // Build list of selected pairs and validate uniqueness
+  const selectedPairs = [];
+  const countByPerson = new Map();
+  checkboxes.forEach((cb) => {
+    if (!cb.checked) return;
+    const i = parseInt(cb.getAttribute('data-i') || '0', 10);
+    const j = parseInt(cb.getAttribute('data-j') || '0', 10);
+    const a = people[i];
+    const b = people[j];
+    if (!a || !b) return;
+    selectedPairs.push([a, b]);
+    countByPerson.set(a, (countByPerson.get(a) || 0) + 1);
+    countByPerson.set(b, (countByPerson.get(b) || 0) + 1);
+  });
+
+  total = selectedPairs.length;
+
+  // Validate exactly N selections and no repeated person
+  const duplicates = Array.from(countByPerson.entries()).filter(([, c]) => c > 1).map(([name, c]) => `${name} (${c})`);
+  if (total !== requiredPairs || duplicates.length > 0) {
+    if (total !== requiredPairs && duplicates.length > 0) {
+      return { error: `Please select exactly ${requiredPairs} pairs and ensure nobody appears more than once. Repeated: ${duplicates.join(', ')}` };
     }
-    if (ok) correct += 1; // same logic as single-pair check
+    if (total !== requiredPairs) {
+      return { error: `Please select exactly ${requiredPairs} pairs. You selected ${total}.` };
+    }
+    return { error: `Each person can appear in only one pair. Repeated: ${duplicates.join(', ')}` };
+  }
+
+  // If valid, compute correctness count without revealing which ones
+  selectedPairs.forEach(([a, b]) => {
+    if (isCorrectPair(a, b)) correct += 1;
   });
 
   return { correct, total };

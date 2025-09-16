@@ -1,21 +1,29 @@
 :root {
-  --bg: #fce4ec;
+  /* Palette (Valentine vibes, slightly modernized) */
+  --bg: #fff4f7;
+  --bg-strong: #ffe3ea;
   --card: #ffffff;
-  --text: #333333;
-  --muted: #757575;
-  --accent: #ff4081;
-  --danger: #f50057;
-  --border: #f8bbd0;
-  --cupid: #ff80ab;
+  --text: #2c2c2c;
+  --muted: #6b6b6b;
+  --accent: #ff4d88;
+  --danger: #ef315e;
+  --border: #ffd2e0;
+  --cupid: #ff85a2;
+
+  /* Elevation */
+  --shadow-sm: 0 2px 12px rgba(255, 77, 136, 0.15);
+  --shadow-md: 0 10px 30px rgba(255, 77, 136, 0.18);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: 'Dancing Script', cursive;
-  background: var(--bg) url('https://www.transparenttextures.com/patterns/hearts.png');
+  font-family: 'Roboto', system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  background: linear-gradient(180deg, var(--bg), #fff 40%) fixed;
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 header, footer {
@@ -25,8 +33,9 @@ header, footer {
 
 header h1 {
   margin: 0;
+  font-family: 'Dancing Script', cursive;
   font-weight: 700;
-  font-size: 2.5em;
+  font-size: clamp(1.6rem, 3.5vw + 1rem, 2.6rem);
   color: var(--accent);
   display: flex;
   align-items: center;
@@ -44,15 +53,15 @@ main { max-width: 1000px; margin: 0 auto; padding: 12px; }
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
-.card h2, .card h3 { margin-top: 0; color: var(--cupid); }
+.card h2, .card h3 { margin-top: 0; color: var(--accent); font-family: 'Dancing Script', cursive; letter-spacing: 0.2px; }
 
 label { display: block; margin: 10px 0 6px; color: var(--muted); }
 input[type="text"], input[type="number"], input[type="password"], select {
   width: 100%;
-  background: #fce4ec;
+  background: #fff9fb;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -71,6 +80,7 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 button:hover { transform: scale(1.05); }
@@ -90,9 +100,13 @@ button:hover { transform: scale(1.05); }
 .full-guess-group { margin-bottom: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
 .full-guess-group h4 { margin: 0 0 8px 0; color: var(--cupid); }
 
+.guess-pairs-list { display: flex; flex-direction: column; gap: 6px; }
+.guess-pair-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff7fb; }
+.guess-pair-row label { margin: 0; }
+
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 
-.pair-pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #fce4ec; border: 1px solid var(--border); margin: 4px 6px 0 0; }
+.pair-pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: var(--bg-strong); border: 1px solid var(--border); margin: 4px 6px 0 0; box-shadow: var(--shadow-sm); }
 
 .hint { color: var(--muted); font-size: 0.9em; }
 
@@ -100,15 +114,60 @@ button:hover { transform: scale(1.05); }
 
 code { background: #fce4ec; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); }
 
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
-thead th { position: sticky; top: 0; background: #f8bbd0; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; vertical-align: middle; }
+thead th { position: sticky; top: 0; background: #ffe0ea; z-index: 1; }
+.guess-matrix { display: block; overflow-x: auto; max-width: 100%; border-radius: 10px; }
+.guess-matrix th, .guess-matrix td { min-width: 42px; }
+.guess-matrix input[type="checkbox"] { transform: scale(1.15); }
+
+/* Guess matrix header rotation */
+.guess-matrix thead th.rotate {
+  height: 120px;
+  vertical-align: bottom;
+  padding: 0 4px;
+  text-align: center;
+}
+.guess-matrix thead th.rotate > div {
+  transform: translateY(10px) rotate(-60deg);
+  transform-origin: bottom left;
+  white-space: nowrap;
+}
+
+/* Disable non-selectable matrix cells */
+.guess-matrix td.disabled-cell {
+  background: #fafafa;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Active highlight for selected rows/columns */
+.guess-matrix td.row-highlight { background: #ffe4ef; }
+.guess-matrix td.col-highlight { background: #fff1f7; }
+.guess-matrix tbody th.row-highlight { background: var(--cupid); color: white; font-weight: 700; }
+.guess-matrix thead th.col-active { font-weight: 700; color: var(--cupid); }
+
+/* Muted appearance for disabled, non-checked cells */
+.guess-matrix input.guess-matrix-cell:disabled:not(:checked) { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 600px) {
-  body { font-size: 14px; }
-  header h1 { font-size: 2em; }
-  .full-guess-area { grid-template-columns: 1fr; }
-  .row { flex-direction: column; align-items: stretch; }
+  body { font-size: 15px; }
+  main { padding: 8px; }
+  .card { padding: 12px; border-radius: 12px; }
+  .row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .actions { flex-direction: column; gap: 8px; }
+  button { width: 100%; padding: 12px 14px; }
+  select, input[type="text"], input[type="number"], input[type="password"] { font-size: 16px; } /* prevent iOS zoom */
+}
+
+/* Ultra-compact for 300x600 */
+@media (max-width: 360px), (max-height: 640px) {
+  header, footer { padding: 12px 8px; }
+  .card { padding: 10px; margin-bottom: 12px; }
+  .card h2, .card h3 { margin-bottom: 8px; }
+  .hint { font-size: 0.85em; }
+  .guess-matrix th, .guess-matrix td { min-width: 36px; padding: 4px; }
+  .guess-matrix input[type="checkbox"] { transform: scale(1.05); }
 }
 
 

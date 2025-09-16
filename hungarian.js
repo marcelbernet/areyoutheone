@@ -1,6 +1,6 @@
 // Minimal Hungarian algorithm in JS for square matrices, returning assignment indices for rows -> cols.
 // Cost matrix: cost[row][col]. Minimizes total cost.
-// Exposes window.solveLinearAssignment(cost) Promise<number[]>.
+// Exposes solveLinearAssignment(cost) Promise<number[]> on both browser (globalThis) and Node (module.exports).
 (function(){
   function hungarian(cost) {
     const n = cost.length;
@@ -41,7 +41,7 @@
     return assignment;
   }
 
-  window.solveLinearAssignment = async function(cost) {
+  const solve = async function(cost) {
     // Ensure square matrix
     const n = cost.length;
     for (let i = 0; i < n; i++) {
@@ -49,6 +49,12 @@
     }
     return hungarian(cost);
   };
+
+  // Attach to global for browser and Node
+  try { (typeof globalThis !== 'undefined') && (globalThis.solveLinearAssignment = solve); } catch (e) {}
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { solveLinearAssignment: solve };
+  }
 })();
 
 
